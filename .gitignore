@@ -1,0 +1,27 @@
+# Temporary files
+*.tmp
+*.log
+*.swp
+*.swo
+*~
+
+# Secrets
+*.secret
+.env
+.env.local
+
+# Downloaded helm charts
+*.tgz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Nix
+result
+result-*
