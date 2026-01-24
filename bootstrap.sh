@@ -5,20 +5,14 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Logging functions
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
 # Check if running on Ubuntu
 if [ ! -f /etc/os-release ] || ! grep -q "Ubuntu" /etc/os-release; then
@@ -27,15 +21,78 @@ if [ ! -f /etc/os-release ] || ! grep -q "Ubuntu" /etc/os-release; then
     exit 1
 fi
 
+# Parse arguments
+SKIP_UPGRADE=false
+for arg in "$@"; do
+    case $arg in
+        --fast|--skip-upgrade)
+            SKIP_UPGRADE=true
+            ;;
+    esac
+done
+
 log_info "Starting anish-devbox setup for GPU VM..."
+START_TIME=$(date +%s)
 
-# Update system
-log_info "Updating system packages..."
-sudo apt update && sudo apt upgrade -y
+# ============================================================================
+# PHASE 1: Add all external repos first (minimizes apt update calls)
+# ============================================================================
+log_step "Phase 1: Setting up package repositories..."
 
-# Install basic utilities
-log_info "Installing basic utilities..."
-sudo apt install -y \
+sudo mkdir -p -m 755 /etc/apt/keyrings
+
+# Add repos in parallel using background processes
+(
+    # GitHub CLI repo
+    if [ ! -f /etc/apt/sources.list.d/github-cli.list ]; then
+        wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+        sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    fi
+) &
+PID_GH=$!
+
+(
+    # Docker repo
+    if [ ! -f /etc/apt/sources.list.d/docker.list ]; then
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null || true
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg 2>/dev/null || true
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    fi
+) &
+PID_DOCKER=$!
+
+(
+    # NodeSource repo (Node.js 20)
+    if [ ! -f /etc/apt/sources.list.d/nodesource.list ]; then
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg 2>/dev/null || true
+        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list > /dev/null
+    fi
+) &
+PID_NODE=$!
+
+# Wait for all repo setups
+wait $PID_GH $PID_DOCKER $PID_NODE 2>/dev/null || true
+log_info "Repositories configured"
+
+# ============================================================================
+# PHASE 2: Single apt update + install all packages at once
+# ============================================================================
+log_step "Phase 2: Installing packages..."
+
+sudo apt-get update -qq
+
+# Optional upgrade (skipped with --fast flag)
+if [ "$SKIP_UPGRADE" = false ]; then
+    log_info "Running system upgrade (use --fast to skip)..."
+    sudo apt-get upgrade -y -qq
+else
+    log_warn "Skipping system upgrade (--fast mode)"
+fi
+
+# Install ALL apt packages in one command (much faster than multiple calls)
+log_info "Installing all packages..."
+sudo apt-get install -y -qq \
     build-essential \
     curl \
     wget \
@@ -44,98 +101,97 @@ sudo apt install -y \
     htop \
     tmux \
     jq \
+    unzip \
     ca-certificates \
     gnupg \
-    lsb-release
+    lsb-release \
+    software-properties-common \
+    gh \
+    nodejs \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
 
-# Install Node.js 20 LTS (using NodeSource)
-log_info "Installing Node.js 20 LTS..."
-if command -v node &> /dev/null; then
-    CURRENT_NODE=$(node -v)
-    log_warn "Node.js already installed: $CURRENT_NODE"
+# Add user to docker group
+sudo usermod -aG docker $USER 2>/dev/null || true
 
-    # Check if version is less than 18
-    NODE_MAJOR=$(node -v | cut -d'.' -f1 | sed 's/v//')
-    if [ "$NODE_MAJOR" -lt 18 ]; then
-        log_warn "Node.js version is too old (< v18). Upgrading to v20 LTS..."
-        sudo apt remove -y nodejs npm || true
-    else
-        log_info "Node.js version is sufficient. Skipping installation."
+log_info "APT packages installed"
+
+# ============================================================================
+# PHASE 3: Download binaries in parallel
+# ============================================================================
+log_step "Phase 3: Installing additional tools..."
+
+# Download kubectl, helm, and uv in parallel
+(
+    if ! command -v kubectl &> /dev/null; then
+        KUBECTL_VERSION=$(curl -sL https://dl.k8s.io/release/stable.txt)
+        curl -sLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        rm -f kubectl
     fi
-fi
+) &
+PID_KUBECTL=$!
 
-if ! command -v node &> /dev/null || [ "$NODE_MAJOR" -lt 18 ]; then
-    # Download and execute NodeSource setup script
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt install -y nodejs
+(
+    if ! command -v helm &> /dev/null; then
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash -s -- --no-sudo 2>/dev/null || \
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash 2>/dev/null
+    fi
+) &
+PID_HELM=$!
 
-    # Verify installation
-    NODE_VERSION=$(node -v)
-    NPM_VERSION=$(npm -v)
-    log_info "Node.js installed: $NODE_VERSION"
-    log_info "npm installed: $NPM_VERSION"
-fi
+(
+    if ! command -v uv &> /dev/null; then
+        curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null
+    fi
+) &
+PID_UV=$!
 
-# Install Claude Code CLI
-log_info "Installing Claude Code CLI..."
-if command -v claude &> /dev/null; then
-    log_warn "Claude Code CLI already installed: $(claude --version || echo 'unknown version')"
-else
-    sudo npm install -g @anthropic-ai/claude-code
-    log_info "Claude Code CLI installed successfully"
-fi
+(
+    # Install Claude Code CLI
+    if ! command -v claude &> /dev/null; then
+        sudo npm install -g @anthropic-ai/claude-code 2>/dev/null
+    fi
+) &
+PID_CLAUDE=$!
 
-# Install Docker (required for microk8s alternatives and general use)
-log_info "Installing Docker..."
-if ! command -v docker &> /dev/null; then
-    # Add Docker's official GPG key
-    sudo install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+# Wait for all parallel downloads
+log_info "Waiting for parallel installations..."
+wait $PID_KUBECTL 2>/dev/null && log_info "kubectl installed" || true
+wait $PID_HELM 2>/dev/null && log_info "helm installed" || true
+wait $PID_UV 2>/dev/null && log_info "uv installed" || true
+wait $PID_CLAUDE 2>/dev/null && log_info "Claude Code CLI installed" || true
 
-    # Add the repository to Apt sources
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+# ============================================================================
+# Summary
+# ============================================================================
+END_TIME=$(date +%s)
+ELAPSED=$((END_TIME - START_TIME))
 
-    sudo apt update
-    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-    # Add user to docker group
-    sudo usermod -aG docker $USER
-    log_info "Docker installed. You may need to log out and back in for docker group membership to take effect."
-else
-    log_info "Docker already installed: $(docker --version)"
-fi
-
-# Install kubectl
-log_info "Installing kubectl..."
-if ! command -v kubectl &> /dev/null; then
-    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-    rm kubectl
-    log_info "kubectl installed: $(kubectl version --client --short 2>/dev/null || kubectl version --client)"
-else
-    log_info "kubectl already installed: $(kubectl version --client --short 2>/dev/null || echo 'version check skipped')"
-fi
-
-# Install Helm
-log_info "Installing Helm..."
-if ! command -v helm &> /dev/null; then
-    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-    log_info "Helm installed: $(helm version --short)"
-else
-    log_info "Helm already installed: $(helm version --short)"
-fi
-
-log_info "Bootstrap installation complete!"
+log_info ""
+log_info "============================================"
+log_info "Bootstrap completed in ${ELAPSED} seconds!"
+log_info "============================================"
+log_info ""
+log_info "Installed:"
+command -v git &> /dev/null && log_info "  - git $(git --version | cut -d' ' -f3)"
+command -v gh &> /dev/null && log_info "  - gh $(gh --version | head -1 | cut -d' ' -f3)"
+command -v node &> /dev/null && log_info "  - node $(node -v)"
+command -v docker &> /dev/null && log_info "  - docker $(docker --version | cut -d' ' -f3 | tr -d ',')"
+command -v kubectl &> /dev/null && log_info "  - kubectl $(kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion' 2>/dev/null || echo 'installed')"
+command -v helm &> /dev/null && log_info "  - helm $(helm version --short 2>/dev/null | cut -d'+' -f1)"
+command -v claude &> /dev/null && log_info "  - claude-code installed"
+[ -f "$HOME/.local/bin/uv" ] && log_info "  - uv installed"
 log_info ""
 log_info "Next steps:"
-log_info "1. Run: ${GREEN}./scripts/setup-microk8s.sh${NC} to install Kubernetes with GPU support"
-log_info "2. Run: ${GREEN}./scripts/setup-dynamo.sh${NC} to install Dynamo and Grove"
-log_info "3. If you want full Nix-based config: ${GREEN}./scripts/setup-nix.sh${NC}"
+log_info "1. Run: ${GREEN}./scripts/setup-terminal.sh${NC} to optimize your terminal"
+log_info "2. Run: ${GREEN}./scripts/setup-microk8s.sh${NC} for Kubernetes with GPU"
+log_info "3. Run: ${GREEN}./scripts/setup-dynamo.sh${NC} for Dynamo and Grove"
 log_info ""
 log_info "You may need to:"
-log_info "- Log out and back in for docker group changes to take effect"
-log_info "- Run: ${GREEN}newgrp docker${NC} to activate docker group in current session"
+log_info "- Run: ${GREEN}newgrp docker${NC} to activate docker group"
+log_info "- Run: ${GREEN}gh auth login${NC} to authenticate with GitHub"
+log_info "- Run: ${GREEN}source ~/.bashrc${NC} to update PATH"

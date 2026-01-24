@@ -6,10 +6,13 @@ Quick setup for GPU VMs with Kubernetes, Dynamo, Grove, and development tools.
 
 This repository provides a fast, automated setup for landing in a fresh GPU VM (Ubuntu) with everything pre-configured:
 
+- **GitHub CLI (gh)** for Git operations and PR workflows
 - **Node.js 20 LTS** with Claude Code CLI
+- **uv** - fast Python package manager
 - **microk8s** with GPU support
 - **Dynamo & Grove** for distributed inference
 - **Docker**, **kubectl**, **Helm**
+- **Terminal optimizations** with useful aliases and completions
 - Optional **Nix** configuration for declarative environment management
 
 ## Quick Start
@@ -17,7 +20,7 @@ This repository provides a fast, automated setup for landing in a fresh GPU VM (
 ### 1. Clone this repo
 
 ```bash
-git clone <your-repo-url> ~/anish-devbox
+git clone https://github.com/athreesh/anish-devbox ~/anish-devbox
 cd ~/anish-devbox
 ```
 
@@ -28,10 +31,17 @@ chmod +x bootstrap.sh scripts/*.sh
 ./bootstrap.sh
 ```
 
+**Speed tip:** Use `--fast` to skip the system upgrade (saves significant time on fresh VMs):
+```bash
+./bootstrap.sh --fast
+```
+
 This installs:
 - System utilities (curl, wget, git, vim, tmux, etc.)
+- **GitHub CLI (gh)** for Git operations and PR workflows
 - **Node.js 20 LTS** (fixes the v12 engine mismatch issue)
 - **Claude Code CLI** via npm
+- **uv** - fast Python package manager
 - Docker with user permissions
 - kubectl and Helm
 
@@ -43,7 +53,20 @@ newgrp docker
 # Or log out and back in for permanent effect
 ```
 
-### 3. Setup Kubernetes with GPU support
+### 3. Optimize your terminal (recommended)
+
+```bash
+./scripts/setup-terminal.sh
+```
+
+This sets up:
+- Modern CLI tools (fzf, bat, ripgrep, fd)
+- Useful aliases for git, kubectl, docker
+- Custom prompt with git branch display
+- Shell completions for kubectl, gh, docker
+- Better history settings
+
+### 4. Setup Kubernetes with GPU support
 
 ```bash
 ./scripts/setup-microk8s.sh
@@ -60,7 +83,7 @@ newgrp microk8s
 source ~/.bashrc  # or ~/.zshrc
 ```
 
-### 4. Setup Dynamo & Grove
+### 5. Setup Dynamo & Grove
 
 ```bash
 export HF_TOKEN=your_huggingface_token  # Optional: set before running
@@ -72,7 +95,7 @@ This installs:
 - Grove for distributed inference
 - Example DynamoGraphDeployment configuration
 
-### 5. Deploy example workload
+### 6. Deploy example workload
 
 ```bash
 # Make sure HF token secret is created first
@@ -87,7 +110,7 @@ kubectl apply -f config/dynamo-grove-example.yaml
 kubectl get pods -n vllm-v1-disagg-router
 ```
 
-### 6. Test the deployment
+### 7. Test the deployment
 
 ```bash
 # Port-forward the frontend
@@ -135,8 +158,9 @@ nix run home-manager/master -- switch --flake ~/.config/home-manager#anish
 
 ```
 anish-devbox/
-├── bootstrap.sh                 # Main setup script (Node, npm, Claude Code, Docker, etc.)
+├── bootstrap.sh                 # Main setup script (Node, gh, Docker, kubectl, etc.)
 ├── scripts/
+│   ├── setup-terminal.sh       # Terminal optimizations (aliases, prompt, tools)
 │   ├── setup-microk8s.sh       # Kubernetes with GPU support
 │   ├── setup-dynamo.sh         # Dynamo & Grove installation
 │   └── setup-nix.sh            # Optional Nix package manager
@@ -146,6 +170,21 @@ anish-devbox/
 │   ├── home.nix                # Home-manager configuration
 │   └── flake.nix               # Nix flake for reproducible builds
 └── README.md
+```
+
+## Makefile Targets
+
+```bash
+make help       # Show available targets
+make bootstrap  # Install base tools
+make fast       # Fast bootstrap (skip apt upgrade)
+make terminal   # Setup terminal optimizations
+make microk8s   # Setup Kubernetes with GPU
+make dynamo     # Setup Dynamo and Grove
+make nix        # Setup Nix package manager
+make all        # Run everything
+make test       # Test the deployment
+make clean      # Cleanup
 ```
 
 ## Troubleshooting
