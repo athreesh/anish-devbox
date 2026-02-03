@@ -1,0 +1,81 @@
+# Starship Prompt Config - Optimized for k8s/git/python workflows
+# Docs: https://starship.rs/config/
+
+# Faster prompt rendering
+command_timeout = 1000
+
+# Prompt format - clean and informative
+format = """
+$directory$git_branch$git_status$python$kubernetes$cmd_duration
+$character"""
+
+# Right-side prompt for less critical info
+right_format = """$time"""
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold green)"
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "bold cyan"
+format = "[$path]($style)[$read_only]($read_only_style) "
+
+[git_branch]
+symbol = " "
+style = "bold purple"
+format = "[$symbol$branch(:$remote_branch)]($style) "
+
+[git_status]
+style = "bold yellow"
+format = '([$all_status$ahead_behind]($style) )'
+conflicted = "="
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+untracked = "?${count}"
+stashed = "*"
+modified = "!${count}"
+staged = "+${count}"
+deleted = "✘${count}"
+
+[kubernetes]
+disabled = true
+symbol = "⎈ "
+style = "bold blue"
+format = '[$symbol$context(:$namespace)]($style) '
+detect_folders = ["charts", "k8s", "kubernetes", "helm", "recipes"]
+detect_files = ["*.yaml", "*.yml"]
+detect_extensions = []
+
+[python]
+symbol = " "
+style = "bold yellow"
+format = '[${symbol}${pyenv_prefix}(${version})(\($virtualenv\))]($style) '
+detect_folders = [".venv", "venv", "docs_venv"]
+
+[cmd_duration]
+min_time = 2000
+style = "bold yellow"
+format = "took [$duration]($style) "
+show_notifications = false
+
+[time]
+disabled = false
+style = "dimmed white"
+format = "[$time]($style)"
+time_format = "%H:%M"
+
+[nodejs]
+disabled = true
+
+[package]
+disabled = true
+
+[aws]
+disabled = true
+
+[gcloud]
+disabled = true
