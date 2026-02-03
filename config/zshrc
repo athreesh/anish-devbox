@@ -1,0 +1,193 @@
+# ============================================
+# DEVBOX ZSH CONFIG - Adapted from macOS setup
+# ============================================
+
+# ---------- PATH setup ----------
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+export GOPATH="$HOME/go"; export GOROOT="$HOME/.go"; export PATH="$GOPATH/bin:$PATH"
+
+# ---------- Starship prompt ----------
+eval "$(starship init zsh)"
+
+# ============================================
+# ALIASES AND FUNCTIONS
+# ============================================
+
+# ---------- Quick Directory Navigation ----------
+export REPOS="$HOME/repos"
+alias repos="cd $REPOS"
+alias dynamo="cd $REPOS/dynamo"
+alias grove="cd $REPOS/grove"
+alias aiconfig="cd $REPOS/aiconfigurator"
+alias nixl="cd $REPOS/nixl"
+
+work() {
+  local dir="${1:-dynamo}"
+  cd "$REPOS/$dir" && git pull && claude
+}
+
+# ---------- Git Shortcuts ----------
+alias gs="git status"
+alias gp="git pull"
+alias gpush="git push"
+alias gco="git checkout"
+alias gcm="git checkout main && git pull"
+alias gd="git diff"
+alias gds="git diff --staged"
+alias gl="git log --oneline -20"
+alias gb="git branch -a"
+alias gstash="git stash"
+alias gpop="git stash pop"
+
+gc() { git add . && git commit -s -m "$*"; }
+gcp() { git add . && git commit -s -m "$*" && git push; }
+gcn() { git add . && git commit -m "$*"; }
+gca() { git commit --amend -s --no-edit; }
+gco-signoff() { git rebase --signoff HEAD~"${1:-1}"; }
+gsignoff-branch() { git rebase --signoff "$(git merge-base HEAD main)"; }
+
+# ---------- Kubectl Shortcuts ----------
+alias k="kubectl"
+alias kgp="kubectl get pods"
+alias kgs="kubectl get svc"
+alias kgn="kubectl get namespace"
+alias kga="kubectl get all"
+alias kd="kubectl describe"
+alias kl="kubectl logs"
+alias klf="kubectl logs -f"
+alias kx="kubectl exec -it"
+alias ka="kubectl apply -f"
+alias kdel="kubectl delete"
+alias kns="kubectl config set-context --current --namespace"
+
+kn() { export NAMESPACE="$1"; echo "NAMESPACE=$NAMESPACE"; }
+kp() { kubectl get pods -n "${NAMESPACE:-default}" "$@"; }
+kaf() { kubectl apply -f "$1" -n "${NAMESPACE:-default}"; }
+ktmux() { kubectl exec -it -n "${NAMESPACE:-default}" "$1" -- tmux a -t "${2:-benchmark}"; }
+kpf() { kubectl port-forward "svc/$1" "${2:-8000}:${3:-8000}" -n "${NAMESPACE:-default}"; }
+kwait() { kubectl wait --for=condition=ready pod -l "$1" -n "${NAMESPACE:-default}" --timeout="${2:-600s}"; }
+
+# ---------- GPU Monitoring ----------
+alias nv="nvidia-smi"
+alias nvw="watch -n 1 nvidia-smi"
+
+# ---------- Python / Development ----------
+alias serve="python3 -m http.server"
+alias serve8="python3 -m http.server 8000"
+alias venv="python3 -m venv venv && source venv/bin/activate"
+alias act="source venv/bin/activate"
+alias dact="source docs_venv/bin/activate"
+
+# ---------- General ----------
+alias c="clear"
+alias ll="ls -la"
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+
+docs() {
+  local base="${1:-$REPOS/dynamo}"
+  cd "$base/docs" && source ../docs_venv/bin/activate && make clean && make SPHINXOPTS="" html
+  echo "Docs built! Run 'serve8' in build/html to preview"
+}
+
+# ============================================
+# ZSH OPTIONS
+# ============================================
+
+# History
+HISTSIZE=100000
+SAVEHIST=100000
+HISTFILE=~/.zsh_history
+setopt HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_SAVE_NO_DUPS
+setopt SHARE_HISTORY INC_APPEND_HISTORY EXTENDED_HISTORY
+setopt HIST_EXPIRE_DUPS_FIRST HIST_IGNORE_SPACE HIST_VERIFY
+
+# Navigation
+setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT CDABLE_VARS
+
+# ---------- Keybindings ----------
+bindkey -e
+bindkey '^[[A' history-search-backward
+bindkey '^[[B' history-search-forward
+bindkey '^[[1;5C' forward-word
+bindkey '^[[1;5D' backward-word
+bindkey '^[[3~' delete-char
+bindkey '^U' backward-kill-line
+bindkey '^K' kill-line
+
+# ============================================
+# COMPLETIONS - Cached for speed
+# ============================================
+autoload -Uz compinit
+# Only regenerate compinit cache once per day
+if [[ -n ${ZDOTDIR}/.zcompdump(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C
+fi
+
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+zstyle ':completion:*' menu select
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
+# Lazy load kubectl completions
+kubectl() {
+  unfunction kubectl 2>/dev/null
+  source <(command kubectl completion zsh)
+  command kubectl "$@"
+}
+
+# ============================================
+# PLUGINS
+# ============================================
+
+# Autosuggestions (apt: zsh-autosuggestions, or git-cloned to /usr/share)
+for _f in /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+          /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh; do
+  [[ -f "$_f" ]] && {
+    source "$_f"
+    ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+    ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#666666"
+    bindkey '^F' autosuggest-accept
+    bindkey '^ ' autosuggest-accept
+    break
+  }
+done
+
+# Syntax highlighting (must be near last)
+for _f in /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+          /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh; do
+  [[ -f "$_f" ]] && { source "$_f"; break; }
+done
+
+# FZF
+command -v fzf &>/dev/null && {
+  # fzf 0.48+ uses --zsh, older versions use key-bindings/completion scripts
+  source <(fzf --zsh) 2>/dev/null || {
+    [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]] && source /usr/share/doc/fzf/examples/key-bindings.zsh
+    [[ -f /usr/share/doc/fzf/examples/completion.zsh ]] && source /usr/share/doc/fzf/examples/completion.zsh
+  }
+  export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
+  export FZF_CTRL_R_OPTS="--preview 'echo {}' --preview-window=down:3:wrap"
+}
+
+# Zoxide (smarter cd)
+command -v zoxide &>/dev/null && {
+  eval "$(zoxide init zsh)"
+  alias cd="z"
+}
+
+# Better ls with eza
+export CLICOLOR=1
+export LSCOLORS="GxFxCxDxBxegedabagaced"
+command -v eza &>/dev/null && {
+  alias ls="eza --icons"
+  alias ll="eza -la --icons --git"
+  alias tree="eza --tree --icons"
+}
+
+# ---------- Utility functions ----------
+histop() { history 1 | awk '{print $2}' | sort | uniq -c | sort -rn | head -"${1:-20}"; }
+hgrep() { history 1 | grep -i "$@"; }
