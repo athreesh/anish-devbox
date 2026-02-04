@@ -29,6 +29,9 @@ fi
 
 log_info "Starting anish-devbox setup for GPU VM..."
 
+# Ensure all scripts are executable (git may not preserve +x on some systems)
+chmod +x scripts/*.sh 2>/dev/null || true
+
 # Update system
 log_info "Updating system packages..."
 sudo apt update && sudo apt upgrade -y
@@ -132,9 +135,10 @@ fi
 log_info "Bootstrap installation complete!"
 log_info ""
 log_info "Next steps:"
-log_info "1. Run: ${GREEN}./scripts/setup-microk8s.sh${NC} to install Kubernetes with GPU support"
-log_info "2. Run: ${GREEN}./scripts/setup-dynamo.sh${NC} to install Dynamo and Grove"
-log_info "3. If you want full Nix-based config: ${GREEN}./scripts/setup-nix.sh${NC}"
+log_info "1. Run: ${GREEN}bash scripts/setup-terminal.sh${NC} to optimize your terminal"
+log_info "2. Run: ${GREEN}bash scripts/setup-microk8s.sh${NC} to install Kubernetes with GPU support"
+log_info "3. Run: ${GREEN}bash scripts/setup-dynamo.sh${NC} to install Dynamo and Grove"
+log_info "4. If you want full Nix-based config: ${GREEN}bash scripts/setup-nix.sh${NC}"
 log_info ""
 log_info "You may need to:"
 log_info "- Log out and back in for docker group changes to take effect"
