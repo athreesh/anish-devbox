@@ -26,7 +26,8 @@ fi
 # ---------- Starship prompt ----------
 log_info "Installing starship..."
 if ! command -v starship &>/dev/null; then
-    curl -sS https://starship.rs/install.sh | sh -s -- -y
+    mkdir -p ~/.local/bin
+    curl -sS https://starship.rs/install.sh | sh -s -- -y --bin-dir ~/.local/bin
 else
     log_warn "starship already installed: $(starship --version)"
 fi
