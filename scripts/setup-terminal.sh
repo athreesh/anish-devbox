@@ -101,7 +101,10 @@ cp "$REPO_DIR/config/starship.toml" "$HOME/.config/starship.toml"
 # ---------- Set zsh as default shell ----------
 if [ "$SHELL" != "$(which zsh)" ]; then
     log_info "Setting zsh as default shell..."
-    chsh -s "$(which zsh)"
+    sudo chsh -s "$(which zsh)" "$(whoami)" 2>/dev/null || {
+        log_warn "Could not change default shell automatically."
+        log_warn "Run manually: sudo chsh -s $(which zsh) $(whoami)"
+    }
     log_info "Default shell changed to zsh. Log out and back in for it to take effect."
 else
     log_info "zsh is already the default shell"
