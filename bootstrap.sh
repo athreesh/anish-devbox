@@ -34,6 +34,9 @@ done
 log_info "Starting anish-devbox setup for GPU VM..."
 START_TIME=$(date +%s)
 
+# Ensure all scripts are executable (git may not preserve +x on some systems)
+chmod +x scripts/*.sh 2>/dev/null || true
+
 # ============================================================================
 # PHASE 1: Add all external repos first (minimizes apt update calls)
 # ============================================================================
@@ -187,9 +190,9 @@ command -v claude &> /dev/null && log_info "  - claude-code installed"
 [ -f "$HOME/.local/bin/uv" ] && log_info "  - uv installed"
 log_info ""
 log_info "Next steps:"
-log_info "1. Run: ${GREEN}./scripts/setup-terminal.sh${NC} to optimize your terminal"
-log_info "2. Run: ${GREEN}./scripts/setup-microk8s.sh${NC} for Kubernetes with GPU"
-log_info "3. Run: ${GREEN}./scripts/setup-dynamo.sh${NC} for Dynamo and Grove"
+log_info "1. Run: ${GREEN}bash scripts/setup-terminal.sh${NC} to optimize your terminal"
+log_info "2. Run: ${GREEN}bash scripts/setup-microk8s.sh${NC} for Kubernetes with GPU"
+log_info "3. Run: ${GREEN}bash scripts/setup-dynamo.sh${NC} for Dynamo and Grove"
 log_info ""
 log_info "You may need to:"
 log_info "- Run: ${GREEN}newgrp docker${NC} to activate docker group"
