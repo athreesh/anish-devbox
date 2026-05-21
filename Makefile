@@ -2,7 +2,7 @@
 
 help:
 	@echo "Available targets:"
-	@echo "  bootstrap  - Install base tools (Node, Docker, kubectl, Helm)"
+	@echo "  bootstrap  - Install base tools (Node, Docker, kubectl, Helm, Claude, Codex)"
 	@echo "  terminal   - Setup zsh, starship, plugins, and shell config"
 	@echo "  microk8s   - Setup microk8s with GPU support"
 	@echo "  dynamo     - Install Dynamo and Grove"

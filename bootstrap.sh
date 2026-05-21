@@ -14,6 +14,24 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
+CLAUDE_REMOTE_CONTROL_MIN_VERSION="2.1.51"
+
+version_at_least() {
+    local current="$1"
+    local minimum="$2"
+
+    [ "$current" = "$minimum" ] && return 0
+    [ "$(printf '%s\n%s\n' "$minimum" "$current" | sort -V | head -n1)" = "$minimum" ]
+}
+
+claude_supports_remote_control() {
+    local current_version
+
+    command -v claude &> /dev/null || return 1
+    current_version="$(claude --version 2>/dev/null | grep -Eo '[0-9]+(\.[0-9]+)+' | head -n1 || true)"
+    [ -n "$current_version" ] && version_at_least "$current_version" "$CLAUDE_REMOTE_CONTROL_MIN_VERSION"
+}
+
 # Check if running on Ubuntu
 if [ ! -f /etc/os-release ] || ! grep -q "Ubuntu" /etc/os-release; then
     log_error "This script is designed for Ubuntu. Detected OS:"
@@ -127,7 +145,7 @@ log_info "APT packages installed"
 # ============================================================================
 log_step "Phase 3: Installing additional tools..."
 
-# Download kubectl, helm, and uv in parallel
+# Download kubectl, helm, uv, and npm-based CLIs in parallel
 (
     if ! command -v kubectl &> /dev/null; then
         KUBECTL_VERSION=$(curl -sL https://dl.k8s.io/release/stable.txt)
@@ -154,19 +172,22 @@ PID_HELM=$!
 PID_UV=$!
 
 (
-    # Install Claude Code CLI
-    if ! command -v claude &> /dev/null; then
-        sudo npm install -g @anthropic-ai/claude-code 2>/dev/null
+    # Install npm-based coding agent CLIs
+    NPM_PACKAGES=()
+    claude_supports_remote_control || NPM_PACKAGES+=("@anthropic-ai/claude-code@latest")
+    command -v codex &> /dev/null || NPM_PACKAGES+=("@openai/codex")
+    if [ ${#NPM_PACKAGES[@]} -gt 0 ]; then
+        sudo npm install -g "${NPM_PACKAGES[@]}" 2>/dev/null
     fi
 ) &
-PID_CLAUDE=$!
+PID_AGENT_CLIS=$!
 
 # Wait for all parallel downloads
 log_info "Waiting for parallel installations..."
 wait $PID_KUBECTL 2>/dev/null && log_info "kubectl installed" || true
 wait $PID_HELM 2>/dev/null && log_info "helm installed" || true
 wait $PID_UV 2>/dev/null && log_info "uv installed" || true
-wait $PID_CLAUDE 2>/dev/null && log_info "Claude Code CLI installed" || true
+wait $PID_AGENT_CLIS 2>/dev/null && log_info "coding agent CLIs installed" || true
 
 # ============================================================================
 # Summary
@@ -186,7 +207,8 @@ command -v node &> /dev/null && log_info "  - node $(node -v)"
 command -v docker &> /dev/null && log_info "  - docker $(docker --version | cut -d' ' -f3 | tr -d ',')"
 command -v kubectl &> /dev/null && log_info "  - kubectl $(kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion' 2>/dev/null || echo 'installed')"
 command -v helm &> /dev/null && log_info "  - helm $(helm version --short 2>/dev/null | cut -d'+' -f1)"
-command -v claude &> /dev/null && log_info "  - claude-code installed"
+command -v claude &> /dev/null && log_info "  - claude-code $(claude --version 2>/dev/null || echo 'installed')"
+command -v codex &> /dev/null && log_info "  - codex $(codex --version 2>/dev/null || echo 'installed')"
 [ -f "$HOME/.local/bin/uv" ] && log_info "  - uv installed"
 log_info ""
 log_info "Next steps:"
@@ -197,4 +219,5 @@ log_info ""
 log_info "You may need to:"
 log_info "- Run: ${GREEN}newgrp docker${NC} to activate docker group"
 log_info "- Run: ${GREEN}gh auth login${NC} to authenticate with GitHub"
+log_info "- Run: ${GREEN}codex login${NC} to authenticate Codex CLI"
 log_info "- Run: ${GREEN}source ~/.bashrc${NC} to update PATH"

@@ -12,7 +12,7 @@ git clone <your-repo-url> ~/anish-devbox && cd ~/anish-devbox && make all
 ### Fresh GPU VM → Fully Configured (3 commands)
 
 ```bash
-# 1. Bootstrap (Node 20, Claude Code, Docker, kubectl, Helm)
+# 1. Bootstrap (Node 20, Claude Code, Codex, Docker, kubectl, Helm)
 ./bootstrap.sh
 
 # 2. Kubernetes + GPU
@@ -44,6 +44,19 @@ curl http://localhost:8000/v1/models
 # Node version too old
 node -v  # Should be v20.x.x
 ./bootstrap.sh  # Re-run to upgrade Node
+```
+
+### "claude remote-control" is unavailable
+```bash
+# Re-run bootstrap to upgrade Claude Code to a Remote Control-capable version
+./bootstrap.sh --fast
+claude --version  # Should be 2.1.51+
+```
+
+### "codex: command not found"
+```bash
+# Re-run bootstrap to install the OpenAI Codex CLI
+./bootstrap.sh --fast
 ```
 
 ### "permission denied" for docker
@@ -97,6 +110,7 @@ microk8s reset  # WARNING: Deletes everything
 |-----------|-------|---------|
 | Node.js 20 LTS | System | `node -v` |
 | Claude Code CLI | npm global | `claude` |
+| OpenAI Codex CLI | npm global | `codex` |
 | Docker | System | `docker ps` |
 | kubectl | /usr/local/bin | `kubectl version` |
 | Helm | /usr/local/bin | `helm version` |

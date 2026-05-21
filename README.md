@@ -14,7 +14,9 @@ git clone https://github.com/athreesh/anish-devbox ~/anish-devbox && cd ~/anish-
 | Tool | Description |
 |------|-------------|
 | **gh** | GitHub CLI for PRs and issues |
-| **Node.js 20** | With Claude Code CLI |
+| **Node.js 20** | Runtime for npm-based CLI tools |
+| **Claude Code CLI** | Anthropic coding agent (`claude`) |
+| **OpenAI Codex CLI** | OpenAI coding agent (`codex`) |
 | **uv** | Fast Python package manager |
 | **Docker** | Container runtime |
 | **kubectl + Helm** | Kubernetes tools |
@@ -89,7 +91,26 @@ sudo usermod -aG docker $USER && newgrp docker
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
-sudo npm install -g @anthropic-ai/claude-code
+sudo npm install -g @anthropic-ai/claude-code@latest @openai/codex
+```
+</details>
+
+<details>
+<summary>Claude Remote Control is missing or too old</summary>
+
+```bash
+claude --version  # Remote Control requires 2.1.51+
+sudo npm install -g @anthropic-ai/claude-code@latest
+```
+</details>
+
+<details>
+<summary>Codex CLI is not authenticated</summary>
+
+```bash
+codex login
+# OR
+export OPENAI_API_KEY=<your_key>
 ```
 </details>
 
