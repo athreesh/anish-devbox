@@ -49,6 +49,28 @@ tmux attach -t claude
 This keeps the tmux pane open if Claude exits with an auth, PATH, or version error.
 Use `--dangerously-skip-permissions` only inside trusted repos/VMs; it skips Claude Code permission prompts.
 
+Install personal Claude skills during terminal setup:
+
+```bash
+A3SH_SKILLS=1 ./scripts/setup-terminal.sh
+```
+
+This clones or updates the private `athreesh/a3sh-skills` repo at `~/repos/a3sh-skills`, then installs its skills into Claude and Codex. Run `gh auth login` first if the VM cannot access private GitHub repos.
+
+To install from another private skills directory:
+
+```bash
+CLAUDE_SKILLS_SOURCE=~/private-claude-skills ./scripts/setup-terminal.sh
+```
+
+To copy local Codex/agent skills into Claude on machines where they already exist:
+
+```bash
+CLAUDE_SYNC_CODEX_SKILLS=1 ./scripts/setup-terminal.sh
+```
+
+Skills are installed to `~/.claude/skills/<skill-name>/SKILL.md`; user-level instructions are installed to `~/.claude/CLAUDE.md`.
+
 ### 3. Kubernetes + GPU (optional)
 
 ```bash
@@ -156,7 +178,7 @@ anish-devbox/
 │   ├── setup-microk8s.sh     # Kubernetes + GPU
 │   ├── setup-dynamo.sh       # Dynamo + Grove
 │   └── setup-nix.sh          # Optional Nix setup
-├── config/                   # Shell, tmux, prompt, and K8s configs
+├── config/                   # Shell, tmux, Claude, prompt, and K8s configs
 └── nix/                      # Nix/home-manager configs
 ```
 
