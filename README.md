@@ -52,10 +52,22 @@ Use `--dangerously-skip-permissions` only inside trusted repos/VMs; it skips Cla
 Install personal Claude skills during terminal setup:
 
 ```bash
-A3SH_SKILLS=1 ./scripts/setup-terminal.sh
+A3SH_DOTFILES=1 A3SH_SKILLS=1 ./scripts/setup-terminal.sh
 ```
 
-This clones or updates the private `athreesh/a3sh-skills` repo at `~/repos/a3sh-skills`, then installs its skills into Claude and Codex. Run `gh auth login` first if the VM cannot access private GitHub repos.
+This clones or updates private `athreesh/a3sh-dotfiles` and `athreesh/a3sh-skills` under `~/repos`, applies dotfiles with chezmoi, then installs skills into Claude and Codex. Run `gh auth login` first if the VM cannot access private GitHub repos.
+
+To apply only dotfiles:
+
+```bash
+A3SH_DOTFILES=1 ./scripts/setup-terminal.sh
+```
+
+To install only personal Claude/Codex skills:
+
+```bash
+A3SH_SKILLS=1 ./scripts/setup-terminal.sh
+```
 
 To install from another private skills directory:
 

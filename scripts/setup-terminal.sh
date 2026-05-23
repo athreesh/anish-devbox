@@ -13,8 +13,33 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
+A3SH_DOTFILES_REPO="${A3SH_DOTFILES_REPO:-athreesh/a3sh-dotfiles}"
+A3SH_DOTFILES_DIR="${A3SH_DOTFILES_DIR:-$HOME/repos/a3sh-dotfiles}"
 A3SH_SKILLS_REPO="${A3SH_SKILLS_REPO:-athreesh/a3sh-skills}"
 A3SH_SKILLS_DIR="${A3SH_SKILLS_DIR:-$HOME/repos/a3sh-skills}"
+
+install_a3sh_dotfiles() {
+    local repo="$A3SH_DOTFILES_REPO"
+    local target_dir="$A3SH_DOTFILES_DIR"
+
+    log_info "Installing private dotfiles from $repo..."
+
+    if [ -d "$target_dir/.git" ]; then
+        git -C "$target_dir" pull --ff-only
+    elif [ -e "$target_dir" ]; then
+        log_error "$target_dir already exists but is not a git checkout"
+        return 1
+    else
+        mkdir -p "$(dirname "$target_dir")"
+        if command -v gh &>/dev/null; then
+            gh repo clone "$repo" "$target_dir"
+        else
+            git clone "https://github.com/$repo.git" "$target_dir"
+        fi
+    fi
+
+    bash "$target_dir/install.sh"
+}
 
 install_a3sh_skills() {
     local repo="$A3SH_SKILLS_REPO"
@@ -160,6 +185,10 @@ if [ -f "$HOME/.claude/CLAUDE.md" ]; then
     log_warn "Backed up existing Claude user instructions to ~/.claude/CLAUDE.md.bak"
 fi
 cp "$REPO_DIR/config/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+
+if [ "${A3SH_DOTFILES:-0}" = "1" ]; then
+    install_a3sh_dotfiles
+fi
 
 if [ "${A3SH_SKILLS:-0}" = "1" ]; then
     install_a3sh_skills
