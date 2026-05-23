@@ -56,6 +56,14 @@ START_TIME=$(date +%s)
 chmod +x scripts/*.sh 2>/dev/null || true
 
 # ============================================================================
+# PHASE 0: Install repository prerequisites
+# ============================================================================
+log_step "Phase 0: Installing repository prerequisites..."
+
+sudo apt-get update -qq || log_warn "Initial apt update had errors; continuing so repository keys can be repaired"
+sudo apt-get install -y -qq ca-certificates curl wget gnupg lsb-release
+
+# ============================================================================
 # PHASE 1: Add all external repos first (minimizes apt update calls)
 # ============================================================================
 log_step "Phase 1: Setting up package repositories..."
@@ -65,7 +73,8 @@ sudo mkdir -p -m 755 /etc/apt/keyrings
 # Add repos in parallel using background processes
 (
     # GitHub CLI repo
-    if [ ! -f /etc/apt/sources.list.d/github-cli.list ]; then
+    if [ ! -f /etc/apt/sources.list.d/github-cli.list ] || [ ! -s /etc/apt/keyrings/githubcli-archive-keyring.gpg ]; then
+        sudo rm -f /etc/apt/keyrings/githubcli-archive-keyring.gpg
         wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
         sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
@@ -75,9 +84,10 @@ PID_GH=$!
 
 (
     # Docker repo
-    if [ ! -f /etc/apt/sources.list.d/docker.list ]; then
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null || true
-        sudo chmod a+r /etc/apt/keyrings/docker.gpg 2>/dev/null || true
+    if [ ! -f /etc/apt/sources.list.d/docker.list ] || [ ! -s /etc/apt/keyrings/docker.gpg ]; then
+        sudo rm -f /etc/apt/keyrings/docker.gpg
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     fi
 ) &
@@ -85,15 +95,23 @@ PID_DOCKER=$!
 
 (
     # NodeSource repo (Node.js 20)
-    if [ ! -f /etc/apt/sources.list.d/nodesource.list ]; then
-        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg 2>/dev/null || true
+    if [ ! -f /etc/apt/sources.list.d/nodesource.list ] || [ ! -s /etc/apt/keyrings/nodesource.gpg ]; then
+        sudo rm -f /etc/apt/keyrings/nodesource.gpg
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
         echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list > /dev/null
     fi
 ) &
 PID_NODE=$!
 
 # Wait for all repo setups
-wait $PID_GH $PID_DOCKER $PID_NODE 2>/dev/null || true
+REPO_SETUP_FAILED=false
+wait $PID_GH || REPO_SETUP_FAILED=true
+wait $PID_DOCKER || REPO_SETUP_FAILED=true
+wait $PID_NODE || REPO_SETUP_FAILED=true
+if [ "$REPO_SETUP_FAILED" = true ]; then
+    log_error "Failed to configure one or more package repositories"
+    exit 1
+fi
 log_info "Repositories configured"
 
 # ============================================================================
@@ -134,6 +152,11 @@ sudo apt-get install -y -qq \
     containerd.io \
     docker-buildx-plugin \
     docker-compose-plugin
+
+if ! command -v npm &> /dev/null; then
+    log_warn "npm not found after nodejs install; installing npm package..."
+    sudo apt-get install -y -qq npm
+fi
 
 # Add user to docker group
 sudo usermod -aG docker $USER 2>/dev/null || true
