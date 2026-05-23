@@ -98,6 +98,13 @@ log_info "Installing starship config..."
 mkdir -p "$HOME/.config"
 cp "$REPO_DIR/config/starship.toml" "$HOME/.config/starship.toml"
 
+log_info "Installing tmux config..."
+if [ -f "$HOME/.tmux.conf" ]; then
+    cp "$HOME/.tmux.conf" "$HOME/.tmux.conf.bak"
+    log_warn "Backed up existing .tmux.conf to .tmux.conf.bak"
+fi
+cp "$REPO_DIR/config/tmux.conf" "$HOME/.tmux.conf"
+
 # ---------- Set zsh as default shell ----------
 if [ "$SHELL" != "$(which zsh)" ]; then
     log_info "Setting zsh as default shell..."

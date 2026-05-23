@@ -133,7 +133,7 @@ anish-devbox/
 │   ├── setup-microk8s.sh     # Kubernetes + GPU
 │   ├── setup-dynamo.sh       # Dynamo + Grove
 │   └── setup-nix.sh          # Optional Nix setup
-├── config/                   # K8s manifests
+├── config/                   # Shell, tmux, prompt, and K8s configs
 └── nix/                      # Nix/home-manager configs
 ```
 
