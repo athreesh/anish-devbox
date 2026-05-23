@@ -177,7 +177,12 @@ PID_UV=$!
     claude_supports_remote_control || NPM_PACKAGES+=("@anthropic-ai/claude-code@latest")
     command -v codex &> /dev/null || NPM_PACKAGES+=("@openai/codex")
     if [ ${#NPM_PACKAGES[@]} -gt 0 ]; then
-        sudo npm install -g "${NPM_PACKAGES[@]}" 2>/dev/null
+        if ! command -v npm &> /dev/null; then
+            log_error "npm is not available; cannot install ${NPM_PACKAGES[*]}"
+            exit 1
+        fi
+        log_info "Installing npm packages: ${NPM_PACKAGES[*]}"
+        sudo npm install -g "${NPM_PACKAGES[@]}"
     fi
 ) &
 PID_AGENT_CLIS=$!
@@ -187,7 +192,12 @@ log_info "Waiting for parallel installations..."
 wait $PID_KUBECTL 2>/dev/null && log_info "kubectl installed" || true
 wait $PID_HELM 2>/dev/null && log_info "helm installed" || true
 wait $PID_UV 2>/dev/null && log_info "uv installed" || true
-wait $PID_AGENT_CLIS 2>/dev/null && log_info "coding agent CLIs installed" || true
+if wait $PID_AGENT_CLIS; then
+    log_info "coding agent CLIs installed"
+else
+    log_error "Failed to install coding agent CLIs"
+    exit 1
+fi
 
 # ============================================================================
 # Summary

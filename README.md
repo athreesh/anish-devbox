@@ -38,6 +38,17 @@ newgrp docker           # Activate docker group
 source ~/.bashrc
 ```
 
+Start a long-running Claude session inside tmux:
+
+```bash
+tmux new-session -d -s claude
+tmux send-keys -t claude 'claude --dangerously-skip-permissions' C-m
+tmux attach -t claude
+```
+
+This keeps the tmux pane open if Claude exits with an auth, PATH, or version error.
+Use `--dangerously-skip-permissions` only inside trusted repos/VMs; it skips Claude Code permission prompts.
+
 ### 3. Kubernetes + GPU (optional)
 
 ```bash
@@ -92,6 +103,18 @@ sudo usermod -aG docker $USER && newgrp docker
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 sudo npm install -g @anthropic-ai/claude-code@latest @openai/codex
+```
+</details>
+
+<details>
+<summary>Claude command not found</summary>
+
+```bash
+./bootstrap.sh --fast
+command -v claude && claude --version
+
+# If you only need to repair Claude:
+sudo npm install -g @anthropic-ai/claude-code@latest
 ```
 </details>
 
