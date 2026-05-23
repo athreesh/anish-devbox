@@ -15,6 +15,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
 CLAUDE_REMOTE_CONTROL_MIN_VERSION="2.1.51"
+APT_INSTALL_FLAGS=(-y -qq --allow-change-held-packages)
 
 version_at_least() {
     local current="$1"
@@ -60,8 +61,11 @@ chmod +x scripts/*.sh 2>/dev/null || true
 # ============================================================================
 log_step "Phase 0: Installing repository prerequisites..."
 
+# Some GPU VM images preconfigure Docker with add-apt-repository, which
+# duplicates the canonical docker.list entry this script manages below.
+sudo rm -f /etc/apt/sources.list.d/archive_uri-https_download_docker_com_linux_ubuntu*.list
 sudo apt-get update -qq || log_warn "Initial apt update had errors; continuing so repository keys can be repaired"
-sudo apt-get install -y -qq ca-certificates curl wget gnupg lsb-release
+sudo apt-get install "${APT_INSTALL_FLAGS[@]}" ca-certificates curl wget gnupg lsb-release
 
 # ============================================================================
 # PHASE 1: Add all external repos first (minimizes apt update calls)
@@ -124,14 +128,14 @@ sudo apt-get update -qq
 # Optional upgrade (skipped with --fast flag)
 if [ "$SKIP_UPGRADE" = false ]; then
     log_info "Running system upgrade (use --fast to skip)..."
-    sudo apt-get upgrade -y -qq
+    sudo apt-get upgrade "${APT_INSTALL_FLAGS[@]}"
 else
     log_warn "Skipping system upgrade (--fast mode)"
 fi
 
 # Install ALL apt packages in one command (much faster than multiple calls)
 log_info "Installing all packages..."
-sudo apt-get install -y -qq \
+sudo apt-get install "${APT_INSTALL_FLAGS[@]}" \
     build-essential \
     curl \
     wget \
@@ -155,7 +159,7 @@ sudo apt-get install -y -qq \
 
 if ! command -v npm &> /dev/null; then
     log_warn "npm not found after nodejs install; installing npm package..."
-    sudo apt-get install -y -qq npm
+    sudo apt-get install "${APT_INSTALL_FLAGS[@]}" npm
 fi
 
 # Add user to docker group
