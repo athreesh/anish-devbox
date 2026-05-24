@@ -5,8 +5,14 @@ Quick setup for GPU VMs with development tools, Kubernetes, and distributed infe
 ## TL;DR
 
 ```bash
-git clone https://github.com/athreesh/anish-devbox ~/anish-devbox && cd ~/anish-devbox
-./bootstrap.sh --fast && ./scripts/setup-terminal.sh && source ~/.bashrc
+git clone https://github.com/athreesh/anish-devbox ~/anish-devbox
+cd ~/anish-devbox
+./bootstrap.sh --fast
+newgrp docker
+gh auth login --hostname github.com --git-protocol https --web
+docker login -u amaddipoti439
+./scripts/setup-terminal.sh
+source ~/.bashrc
 ```
 
 ## What Gets Installed
@@ -31,7 +37,17 @@ git clone https://github.com/athreesh/anish-devbox ~/anish-devbox && cd ~/anish-
 newgrp docker           # Activate docker group
 ```
 
-### 2. Terminal setup (recommended)
+### 2. Authenticate (recommended)
+
+```bash
+gh auth login --hostname github.com --git-protocol https --web
+docker login -u amaddipoti439
+```
+
+The GitHub command starts the browser/device-code flow. When prompted, enter the displayed code at `https://github.com/login/device`.
+Docker prompts for the password or access token for `amaddipoti439`.
+
+### 3. Terminal setup (recommended)
 
 ```bash
 ./scripts/setup-terminal.sh
@@ -55,16 +71,16 @@ Install personal dotfiles and curated Claude/Codex skills during terminal setup:
 A3SH_DOTFILES=1 ./scripts/setup-terminal.sh
 ```
 
-This clones or updates private `athreesh/a3sh-dotfiles` under `~/repos`, applies dotfiles with chezmoi, then symlinks curated skills into Claude and Codex. Run `gh auth login` first if the VM cannot access private GitHub repos.
+This clones or updates private `athreesh/a3sh-dotfiles` under `~/repos`, applies dotfiles with chezmoi, then symlinks curated skills into Claude and Codex. Run `gh auth login --hostname github.com --git-protocol https --web` first if the VM cannot access private GitHub repos.
 
-### 3. Kubernetes + GPU (optional)
+### 4. Kubernetes + GPU (optional)
 
 ```bash
 ./scripts/setup-microk8s.sh
 newgrp microk8s
 ```
 
-### 4. Dynamo + Grove (optional)
+### 5. Dynamo + Grove (optional)
 
 ```bash
 export HF_TOKEN=your_token

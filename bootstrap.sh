@@ -255,6 +255,7 @@ log_info "3. Run: ${GREEN}bash scripts/setup-dynamo.sh${NC} for Dynamo and Grove
 log_info ""
 log_info "You may need to:"
 log_info "- Run: ${GREEN}newgrp docker${NC} to activate docker group"
-log_info "- Run: ${GREEN}gh auth login${NC} to authenticate with GitHub"
+log_info "- Run: ${GREEN}gh auth login --hostname github.com --git-protocol https --web${NC} and enter the code at https://github.com/login/device"
+log_info "- Run: ${GREEN}docker login -u amaddipoti439${NC} to authenticate Docker Hub"
 log_info "- Run: ${GREEN}codex login${NC} to authenticate Codex CLI"
 log_info "- Run: ${GREEN}source ~/.bashrc${NC} to update PATH"
