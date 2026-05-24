@@ -49,39 +49,13 @@ tmux attach -t claude
 This keeps the tmux pane open if Claude exits with an auth, PATH, or version error.
 Use `--dangerously-skip-permissions` only inside trusted repos/VMs; it skips Claude Code permission prompts.
 
-Install personal Claude skills during terminal setup:
-
-```bash
-A3SH_DOTFILES=1 A3SH_SKILLS=1 ./scripts/setup-terminal.sh
-```
-
-This clones or updates private `athreesh/a3sh-dotfiles` and `athreesh/a3sh-skills` under `~/repos`, applies dotfiles with chezmoi, then installs skills into Claude and Codex. Run `gh auth login` first if the VM cannot access private GitHub repos.
-
-To apply only dotfiles:
+Install personal dotfiles and curated Claude/Codex skills during terminal setup:
 
 ```bash
 A3SH_DOTFILES=1 ./scripts/setup-terminal.sh
 ```
 
-To install only personal Claude/Codex skills:
-
-```bash
-A3SH_SKILLS=1 ./scripts/setup-terminal.sh
-```
-
-To install from another private skills directory:
-
-```bash
-CLAUDE_SKILLS_SOURCE=~/private-claude-skills ./scripts/setup-terminal.sh
-```
-
-To copy local Codex/agent skills into Claude on machines where they already exist:
-
-```bash
-CLAUDE_SYNC_CODEX_SKILLS=1 ./scripts/setup-terminal.sh
-```
-
-Skills are installed to `~/.claude/skills/<skill-name>/SKILL.md`; user-level instructions are installed to `~/.claude/CLAUDE.md`.
+This clones or updates private `athreesh/a3sh-dotfiles` under `~/repos`, applies dotfiles with chezmoi, then symlinks curated skills into Claude and Codex. Run `gh auth login` first if the VM cannot access private GitHub repos.
 
 ### 3. Kubernetes + GPU (optional)
 
