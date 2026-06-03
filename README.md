@@ -15,7 +15,14 @@ codex login
 claude
 docker login -u amaddipoti439
 mkdir -p ~/repos
-git clone https://github.com/athreesh/a3sh-dotfiles ~/repos/a3sh-dotfiles || git -C ~/repos/a3sh-dotfiles pull --ff-only
+if [ -d ~/repos/a3sh-dotfiles/.git ]; then
+  git -C ~/repos/a3sh-dotfiles pull --ff-only
+elif [ ! -e ~/repos/a3sh-dotfiles ]; then
+  git clone https://github.com/athreesh/a3sh-dotfiles ~/repos/a3sh-dotfiles
+else
+  echo "~/repos/a3sh-dotfiles exists but is not a git checkout"
+  exit 1
+fi
 A3SH_DOTFILES=1 ./scripts/setup-terminal.sh
 exec zsh
 ```
@@ -58,7 +65,14 @@ After GitHub, Codex, and Claude auth are complete, paste this to install private
 
 ```bash
 mkdir -p ~/repos
-git clone https://github.com/athreesh/a3sh-dotfiles ~/repos/a3sh-dotfiles || git -C ~/repos/a3sh-dotfiles pull --ff-only
+if [ -d ~/repos/a3sh-dotfiles/.git ]; then
+  git -C ~/repos/a3sh-dotfiles pull --ff-only
+elif [ ! -e ~/repos/a3sh-dotfiles ]; then
+  git clone https://github.com/athreesh/a3sh-dotfiles ~/repos/a3sh-dotfiles
+else
+  echo "~/repos/a3sh-dotfiles exists but is not a git checkout"
+  exit 1
+fi
 A3SH_DOTFILES=1 ./scripts/setup-terminal.sh
 exec zsh
 ```
