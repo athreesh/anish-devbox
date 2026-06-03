@@ -27,6 +27,16 @@ work() {
   cd "$REPOS/$dir" && git pull && claude
 }
 
+# ---------- Codex Shortcuts ----------
+codex() {
+  if [[ "$1" == "new" ]]; then
+    shift
+    command codex --dangerously-bypass-approvals-and-sandbox "$@"
+  else
+    command codex "$@"
+  fi
+}
+
 # ---------- Git Shortcuts ----------
 alias gs="git status"
 alias gp="git pull"

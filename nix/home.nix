@@ -113,6 +113,16 @@
         complete -F __start_kubectl k
       fi
 
+      # Codex shortcut: `codex new` starts a full-access, no-approval session.
+      codex() {
+        if [[ "$1" == "new" ]]; then
+          shift
+          command codex --dangerously-bypass-approvals-and-sandbox "$@"
+        else
+          command codex "$@"
+        fi
+      }
+
       # Microk8s aliases if installed
       if command -v microk8s &> /dev/null; then
         alias kubectl='microk8s kubectl'

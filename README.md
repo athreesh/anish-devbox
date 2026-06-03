@@ -110,6 +110,8 @@ make all        # Everything
 
 **Navigation:** `..` `...` `....` `ll` `la`
 
+**Codex:** `codex new` starts `codex --dangerously-bypass-approvals-and-sandbox`
+
 ## Troubleshooting
 
 <details>
