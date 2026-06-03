@@ -10,9 +10,14 @@ cd ~/anish-devbox
 ./bootstrap.sh --fast
 newgrp docker
 gh auth login --hostname github.com --git-protocol https --web
+codex login
+# Run Claude once, complete auth, then exit.
+claude
 docker login -u amaddipoti439
-./scripts/setup-terminal.sh
-source ~/.bashrc
+mkdir -p ~/repos
+git clone https://github.com/athreesh/a3sh-dotfiles ~/repos/a3sh-dotfiles || git -C ~/repos/a3sh-dotfiles pull --ff-only
+A3SH_DOTFILES=1 ./scripts/setup-terminal.sh
+exec zsh
 ```
 
 ## What Gets Installed
@@ -41,17 +46,32 @@ newgrp docker           # Activate docker group
 
 ```bash
 gh auth login --hostname github.com --git-protocol https --web
+codex login
+# Run Claude once, complete auth, then exit.
+claude
 docker login -u amaddipoti439
 ```
 
 The GitHub command starts the browser/device-code flow. When prompted, enter the displayed code at `https://github.com/login/device`.
 Docker prompts for the password or access token for `amaddipoti439`.
+After GitHub, Codex, and Claude auth are complete, paste this to install private dotfiles and sync Claude/Codex skills:
+
+```bash
+mkdir -p ~/repos
+git clone https://github.com/athreesh/a3sh-dotfiles ~/repos/a3sh-dotfiles || git -C ~/repos/a3sh-dotfiles pull --ff-only
+A3SH_DOTFILES=1 ./scripts/setup-terminal.sh
+exec zsh
+```
+
+This clones or updates private `athreesh/a3sh-dotfiles` under `~/repos`, applies dotfiles with chezmoi, then symlinks curated skills into Claude and Codex.
 
 ### 3. Terminal setup (recommended)
 
+If you are not installing private dotfiles, run the terminal setup directly:
+
 ```bash
 ./scripts/setup-terminal.sh
-source ~/.bashrc
+exec zsh
 ```
 
 Start a long-running Claude session inside tmux:
@@ -64,14 +84,6 @@ tmux attach -t claude
 
 This keeps the tmux pane open if Claude exits with an auth, PATH, or version error.
 Use `--dangerously-skip-permissions` only inside trusted repos/VMs; it skips Claude Code permission prompts.
-
-Install personal dotfiles and curated Claude/Codex skills during terminal setup:
-
-```bash
-A3SH_DOTFILES=1 ./scripts/setup-terminal.sh
-```
-
-This clones or updates private `athreesh/a3sh-dotfiles` under `~/repos`, applies dotfiles with chezmoi, then symlinks curated skills into Claude and Codex. Run `gh auth login --hostname github.com --git-protocol https --web` first if the VM cannot access private GitHub repos.
 
 ### 4. Kubernetes + GPU (optional)
 
